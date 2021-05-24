@@ -14,7 +14,7 @@ contract GHTVerificationService is Pausable {
      */
     event SetWhiteListAddress(address indexed account, bool flag);
     event DepositGHT(address indexed account, uint256 amount);
-    event WithdrawGHT(address indexed account, uint256 amount);
+    event GHTWithdrawalConfirmation(address indexed account, address indexed to, uint256 amount);
     event DecreaseGHTAmount(address indexed account, uint256 amount);
     
     constructor(address pauser, address _ght) public Pausable(pauser){
@@ -30,7 +30,7 @@ contract GHTVerificationService is Pausable {
         return _GHTAmount[account];
     }
     
-     /**
+    /**
      * @dev User deposit to Wallet.
      */
     function depositGHT(uint256 amount, address user) public whenNotPaused {
@@ -43,20 +43,25 @@ contract GHTVerificationService is Pausable {
     /**
      * @dev User withdraw GHT from Wallet.
      */
-    function withdrawGHT(uint256 amount, address user) public onlyOwner whenNotPaused {
-        require(_whiteListAddress[user]);
-        require(_GHTAmount[user] > amount);
+    function confirmedGHTWithdrawal(uint256 amount, address whitelistAddress, address to, uint256 update) public onlyMod whenNotPaused {
+        //require(_whiteListAddress[user]);
+        //require(_GHTAmount[whitelistAddress] >= amount);
         
-        GHT.transfer(user,amount);
-        _GHTAmount[user] = _GHTAmount[user].sub(amount);
+        if(update!=0)
+            _GHTAmount[whitelistAddress] = update;
         
-        emit WithdrawGHT(user, amount);
+        GHT.transfer(to,amount);
+        _GHTAmount[whitelistAddress] = _GHTAmount[whitelistAddress].sub(amount);
+        
+        assert(_GHTAmount[whitelistAddress]>=0);
+        
+        emit GHTWithdrawalConfirmation(whitelistAddress, to, amount);
     }
     
     /**
      * @dev Decrease GHT in wallet cz used.
      */
-    function decreaseGHTAmount(uint256 amount, address user) public onlyOwner whenNotPaused {
+    function decreaseGHTAmount(uint256 amount, address user) public onlyMod whenNotPaused {
         _GHTAmount[user] = _GHTAmount[user].sub(amount);
         assert(_GHTAmount[user]>=0);
         emit DecreaseGHTAmount(user, amount);
@@ -65,7 +70,7 @@ contract GHTVerificationService is Pausable {
     /**
      * @dev Set the user's address to lock or unlock.
      */
-    function setWhiteListAddress(address account, bool flag) public onlyOwner {
+    function setWhiteListAddress(address account, bool flag) public onlyMod {
         _setWhiteListAddress(account, flag);
         emit SetWhiteListAddress(account, flag);
     }
@@ -82,5 +87,23 @@ contract GHTVerificationService is Pausable {
      */
     function _setWhiteListAddress(address account, bool flag) internal {
         _whiteListAddress[account] = flag;
+    }
+    
+    /**
+     * @dev Pausese contract.
+     *
+     * See {Pausable-_pause}.
+     */
+    function pauseContract() public virtual onlyPauser {
+        _pause();
+    }
+    
+    /**
+     * @dev Unpauses contract.
+     *
+     * See {Pausable-_unpause}.
+     */
+    function unpauseContract() public virtual onlyPauser {
+        _unpause();
     }
 }
